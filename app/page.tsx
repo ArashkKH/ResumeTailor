@@ -6,24 +6,32 @@ import {
   Typography,
   Box,
   Button,
-  IconButton,
   Tooltip,
 } from '@mui/material';
-import KeyIcon from '@mui/icons-material/Key';
+import TuneIcon from '@mui/icons-material/Tune';
 import DownloadIcon from '@mui/icons-material/Download';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import { saveAs } from 'file-saver';
-import ApiKeyDialog from '@/components/ApiKeyDialog';
+import ModelDialog from '@/components/ApiKeyDialog';
 import DropZone from '@/components/DropZone';
 import OutputPanel from '@/components/OutputPanel';
 import { applyChanges } from '@/lib/docx';
+import {
+  DEFAULT_PROVIDER,
+  DEFAULT_MODELS,
+  getProvider,
+  getModel,
+  type ProviderId,
+} from '@/lib/providers';
 import type { ParsedParagraph, TailorResult, StatusState } from '@/lib/types';
 
-const STORAGE_KEY = 'rt_anthropic_key';
+const SK = 'rt_';
 
 export default function HomePage() {
+  const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER);
+  const [model, setModel] = useState(DEFAULT_MODELS[DEFAULT_PROVIDER]);
   const [apiKey, setApiKey] = useState('');
-  const [apiKeyOpen, setApiKeyOpen] = useState(false);
+  const [modelDialogOpen, setModelDialogOpen] = useState(false);
 
   const [docxBytes, setDocxBytes] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState('');
@@ -36,9 +44,23 @@ export default function HomePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) setApiKey(saved);
+    const savedProvider = (localStorage.getItem(`${SK}provider`) as ProviderId) ?? DEFAULT_PROVIDER;
+    const savedModel =
+      localStorage.getItem(`${SK}model_${savedProvider}`) ?? DEFAULT_MODELS[savedProvider];
+    const savedKey = localStorage.getItem(`${SK}key_${savedProvider}`) ?? '';
+    setProvider(savedProvider);
+    setModel(savedModel);
+    setApiKey(savedKey);
   }, []);
+
+  const handleModelSave = useCallback(
+    (newProvider: ProviderId, newModel: string, newKey: string) => {
+      setProvider(newProvider);
+      setModel(newModel);
+      setApiKey(newKey);
+    },
+    []
+  );
 
   const handleFileLoaded = useCallback(
     (bytes: ArrayBuffer, name: string, paras: ParsedParagraph[]) => {
@@ -58,7 +80,7 @@ export default function HomePage() {
   async function tailor() {
     if (!canTailor || status === 'loading') return;
     if (!apiKey.trim()) {
-      setApiKeyOpen(true);
+      setModelDialogOpen(true);
       return;
     }
 
@@ -76,7 +98,7 @@ export default function HomePage() {
       const res = await fetch('/api/tailor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey, resumeText, jobDescription: jd }),
+        body: JSON.stringify({ provider, model, apiKey, resumeText, jobDescription: jd }),
       });
       const data = (await res.json()) as TailorResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -120,6 +142,9 @@ export default function HomePage() {
   const step1Active = !!docxBytes;
   const step2Active = !!jd.trim();
   const step3Active = !!result;
+
+  const providerLabel = getProvider(provider).label;
+  const modelShort = getModel(provider, model).shortLabel;
 
   function StepBadge({ n, active }: { n: number; active: boolean }) {
     return (
@@ -189,21 +214,31 @@ export default function HomePage() {
             </Typography>
           </Box>
 
-          <Tooltip title={apiKey ? 'API key saved — click to update' : 'Set your Anthropic API key'}>
-            <IconButton
+          <Tooltip title="Change AI provider, model, or API key">
+            <Button
               size="small"
-              onClick={() => setApiKeyOpen(true)}
+              onClick={() => setModelDialogOpen(true)}
+              endIcon={<TuneIcon sx={{ fontSize: '13px !important' }} />}
               sx={{
+                fontFamily: 'var(--font-dm-mono), monospace',
+                fontSize: 11,
+                letterSpacing: '0.3px',
                 color: apiKey ? 'primary.main' : '#555',
                 border: '1px solid',
                 borderColor: apiKey ? 'rgba(200,240,74,0.3)' : '#2a2a2a',
-                width: 32,
-                height: 32,
+                px: 1.25,
+                py: 0.5,
+                minWidth: 0,
+                textTransform: 'none',
                 transition: 'all 0.2s',
+                '&:hover': {
+                  borderColor: apiKey ? 'rgba(200,240,74,0.5)' : '#444',
+                  bgcolor: 'transparent',
+                },
               }}
             >
-              <KeyIcon sx={{ fontSize: 16 }} />
-            </IconButton>
+              {providerLabel} · {modelShort}
+            </Button>
           </Tooltip>
         </Toolbar>
       </AppBar>
@@ -345,7 +380,7 @@ export default function HomePage() {
                   textAlign: 'center',
                 }}
               >
-                ⚠ Set your Anthropic API key first (key icon ↑)
+                ⚠ Set your API key first — click &quot;{providerLabel} · {modelShort}&quot; above
               </Typography>
             )}
             <Button
@@ -479,11 +514,13 @@ export default function HomePage() {
         </Box>
       </Box>
 
-      <ApiKeyDialog
-        open={apiKeyOpen}
-        currentKey={apiKey}
-        onSave={setApiKey}
-        onClose={() => setApiKeyOpen(false)}
+      <ModelDialog
+        open={modelDialogOpen}
+        provider={provider}
+        model={model}
+        apiKey={apiKey}
+        onSave={handleModelSave}
+        onClose={() => setModelDialogOpen(false)}
       />
     </Box>
   );
