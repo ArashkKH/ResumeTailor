@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Tailor · DOCX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<style>
+:root {
+  --bg: #0f0f0f; --surface: #171717; --surface2: #1f1f1f;
+  --border: #2a2a2a; --accent: #c8f04a; --accent2: #4af0b8;
+  --text: #efefed; --muted: #666; --warn: #f0b44a; --danger: #f04a4a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; min-height: 100vh; }
+
+header { padding: 22px 28px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 14px; }
+header h1 { font-family: 'DM Serif Display', serif; font-size: 24px; letter-spacing: -0.5px; }
+.pill { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); background: rgba(200,240,74,0.07); border: 1px solid rgba(200,240,74,0.18); border-radius: 4px; padding: 2px 8px; letter-spacing: 1px; }
+
+.layout { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 65px); }
+
+/* ── Left sidebar ── */
+.sidebar { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+.panel-hd { padding: 14px 18px 12px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.panel-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+.step { font-family: 'DM Mono', monospace; font-size: 10px; width: 20px; height: 20px; border-radius: 50%; background: var(--border); color: var(--muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.step.on { background: var(--accent); color: #0f0f0f; }
+.step-row { display: flex; align-items: center; gap: 8px; }
+
+/* Upload zone */
+.upload-zone { margin: 16px; border: 1.5px dashed var(--border); border-radius: 10px; padding: 28px 16px; text-align: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(200,240,74,0.04); }
+.upload-zone.has-file { border-color: var(--accent2); background: rgba(74,240,184,0.04); border-style: solid; }
+.upload-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.5; }
+.upload-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.upload-sub { font-size: 11px; color: var(--muted); }
+.upload-zone.has-file .upload-icon { opacity: 1; }
+.file-name { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent2); margin-top: 6px; word-break: break-all; }
+
+textarea {
+  background: var(--surface); border: none; color: var(--text);
+  font-family: 'DM Mono', monospace; font-size: 12px; line-height: 1.7;
+  padding: 16px 18px; resize: none; outline: none; width: 100%; flex: 1;
+}
+textarea::placeholder { color: #3a3a3a; }
+textarea:focus { background: #1a1a1a; }
+
+.sidebar-actions { padding: 14px 16px; border-top: 1px solid var(--border); background: var(--bg); flex-shrink: 0; }
+
+button { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 9px 18px; border-radius: 6px; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn-primary { background: var(--accent); color: #0f0f0f; width: 100%; font-size: 14px; padding: 11px; }
+.btn-primary:hover { background: #d4f55a; }
+.btn-primary:disabled { background: #2a2a2a; color: #444; cursor: not-allowed; }
+.btn-sm { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); font-size: 11px; padding: 5px 10px; }
+.btn-sm:hover { color: var(--text); background: #282828; }
+.btn-dl { background: var(--accent2); color: #0f0f0f; }
+.btn-dl:hover { background: #5ff5c0; transform: translateY(-1px); }
+.btn-dl:disabled { background: #2a2a2a; color: #444; cursor: not-allowed; transform: none; }
+
+/* ── Right output ── */
+.output-col { display: flex; flex-direction: column; overflow: hidden; }
+.output-hd { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.output-scroll { flex: 1; overflow-y: auto; padding: 20px; background: var(--surface); }
+.output-scroll::-webkit-scrollbar { width: 4px; }
+.output-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.status-bar { padding: 10px 20px; border-top: 1px solid var(--border); background: var(--bg); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.dot.spin { background: var(--accent); animation: pulse 1s infinite; }
+.dot.ok { background: var(--accent2); }
+.dot.err { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.status-txt { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+/* Cards */
+.card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; overflow: hidden; animation: fadeUp .25s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.card-hd { padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-section { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: .5px; text-transform: uppercase; }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-family: 'DM Mono', monospace; flex-shrink: 0; }
+.b-rw { background: rgba(200,240,74,.1); color: var(--accent); border: 1px solid rgba(200,240,74,.2); }
+.b-tw { background: rgba(240,180,74,.1); color: var(--warn); border: 1px solid rgba(240,180,74,.2); }
+.b-kp { background: rgba(74,240,184,.1); color: var(--accent2); border: 1px solid rgba(74,240,184,.2); }
+.card-body { padding: 12px 14px; }
+.lbl { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+.orig { font-size: 12px; line-height: 1.65; color: #555; text-decoration: line-through; text-decoration-color: #383838; white-space: pre-wrap; }
+.tw-orig { color: var(--muted); text-decoration: none; }
+.new-txt { font-size: 12px; line-height: 1.65; color: #d4d4d0; white-space: pre-wrap; }
+.rule { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+.reason { font-size: 11px; color: var(--muted); line-height: 1.6; font-style: italic; }
+.para-idx { font-family: 'DM Mono', monospace; font-size: 9px; color: #333; }
+
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--muted); text-align: center; padding: 40px; }
+.empty-icon { font-size: 32px; opacity: .25; }
+.empty-txt { font-size: 13px; line-height: 1.7; max-width: 280px; }
+
+.thinking { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+.dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin: 0 2px; animation: bounce 1.2s infinite; }
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-5px);opacity:1}}
+.think-lbl { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+.summary-bar { padding: 10px 14px; background: rgba(200,240,74,.05); border: 1px solid rgba(200,240,74,.12); border-radius: 8px; margin-bottom: 16px; display: flex; gap: 20px; flex-wrap: wrap; }
+.sum-item { text-align: center; }
+.sum-num { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--accent); }
+.sum-lbl { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }
+
+@media(max-width:680px){
+  .layout{grid-template-columns:1fr;height:auto}
+  .sidebar{height:auto}
+  .output-col{min-height:60vh}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Resume Tailor</h1>
+  <span class="pill">DOCX · LAYOUT PRESERVED</span>
+</header>
+
+<div class="layout">
+
+  <!-- ─── Sidebar ─── -->
+  <div class="sidebar">
+
+    <!-- Step 1: Upload -->
+    <div class="panel-hd">
+      <div class="step-row"><div class="step on" id="s1">1</div><span class="panel-label">Base Resume (.docx)</span></div>
+    </div>
+
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+         ondragover="ev(event,'drag',true)" ondragleave="ev(event,'drag',false)" ondrop="onDrop(event)">
+      <div class="upload-icon" id="upIcon">📄</div>
+      <div class="upload-title" id="upTitle">Drop your .docx here</div>
+      <div class="upload-sub" id="upSub">or click to browse</div>
+      <div class="file-name" id="upName"></div>
+    </div>
+    <input type="file" id="fileInput" accept=".docx" style="display:none" onchange="onFileSelect(this)">
+
+    <!-- Step 2: JD -->
+    <div class="panel-hd" style="border-top:1px solid var(--border)">
+      <div class="step-row"><div class="step" id="s2">2</div><span class="panel-label">Job Description</span></div>
+      <button class="btn-sm" onclick="document.getElementById('jdInput').value=''">Clear</button>
+    </div>
+    <textarea id="jdInput" placeholder="Paste the full job description here — role title, responsibilities, required skills, tech stack, company context. More detail = better tailoring." style="min-height:200px"></textarea>
+
+    <div class="sidebar-actions">
+      <button class="btn-primary" id="tailorBtn" onclick="tailor()" disabled>✦ Tailor My Resume</button>
+    </div>
+  </div>
+
+  <!-- ─── Output ─── -->
+  <div class="output-col">
+    <div class="output-hd">
+      <div class="step-row"><div class="step" id="s3">3</div><span class="panel-label">Tailored Output</span></div>
+      <button class="btn-dl" id="dlBtn" onclick="downloadDocx()" disabled style="opacity:.4;cursor:not-allowed">↓ Download Tailored .docx</button>
+    </div>
+
+    <div class="output-scroll" id="outputArea">
+      <div class="empty" id="emptyState">
+        <div class="empty-icon">◈</div>
+        <div class="empty-txt">Upload your base <strong>.docx</strong> and paste a job description.<br><br>The app reads your resume's structure, tailors the text to the role, and hands back a <strong>.docx with your exact layout intact</strong> — fonts, spacing, columns, everything.</div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="dot" id="dot"></div>
+      <span class="status-txt" id="statusTxt">Ready</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ───
+let baseDocxBytes = null;   // ArrayBuffer of original docx
+let baseFileName = '';
+let parsedParas = [];       // [{idx, text, style, isEmpty}]
+let lastChanges = null;     // [{para_idx, new_text, action, section, reasoning}]
+
+// ─── Upload handling ───
+function ev(e, cls, add) { e.preventDefault(); document.getElementById('dropZone').classList[add?'add':'remove'](cls); }
+
+function onDrop(e) {
+  e.preventDefault();
+  ev(e, 'drag', false);
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
+}
+
+function onFileSelect(inp) {
+  if (inp.files[0]) loadFile(inp.files[0]);
+}
+
+async function loadFile(file) {
+  if (!file.name.endsWith('.docx')) { alert('Please upload a .docx file.'); return; }
+  baseFileName = file.name;
+  baseDocxBytes = await file.arrayBuffer();
+
+  // Parse paragraphs
+  try {
+    parsedParas = await extractParagraphs(baseDocxBytes);
+    const dz = document.getElementById('dropZone');
+    dz.classList.add('has-file');
+    document.getElementById('upIcon').textContent = '✅';
+    document.getElementById('upTitle').textContent = 'Resume loaded';
+    document.getElementById('upSub').textContent = `${parsedParas.filter(p=>p.text.trim()).length} text paragraphs found`;
+    document.getElementById('upName').textContent = file.name;
+    document.getElementById('s2').classList.add('on');
+    checkReady();
+    setStatus('ok', `Loaded: ${file.name} · ${parsedParas.length} paragraphs`);
+  } catch(err) {
+    alert('Could not read the .docx file. Make sure it\'s a valid Word document.\n\n' + err.message);
+  }
+}
+
+// ─── DOCX XML parsing ───
+const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+async function extractParagraphs(arrayBuffer) {
+  const zip = await JSZip.loadAsync(arrayBuffer);
+  const xmlStr = await zip.file('word/document.xml').async('text');
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlStr, 'application/xml');
+
+  const body = doc.getElementsByTagNameNS(W, 'body')[0];
+  const paras = body.getElementsByTagNameNS(W, 'p');
+  const result = [];
+
+  for (let i = 0; i < paras.length; i++) {
+    const p = paras[i];
+    // Get style
+    const pStyle = p.getElementsByTagNameNS(W, 'pStyle')[0];
+    const style = pStyle ? pStyle.getAttribute('w:val') : 'Normal';
+    // Collect text from all w:t nodes (skip deleted text in w:del)
+    const runs = p.getElementsByTagNameNS(W, 't');
+    let text = '';
+    for (let r of runs) {
+      // Skip if inside w:del
+      let ancestor = r.parentNode;
+      let inDel = false;
+      while (ancestor && ancestor !== p) {
+        if (ancestor.localName === 'del') { inDel = true; break; }
+        ancestor = ancestor.parentNode;
+      }
+      if (!inDel) text += (r.textContent || '');
+    }
+    result.push({ idx: i, text, style, isEmpty: !text.trim() });
+  }
+  return result;
+}
+
+// ─── Rewrite text into XML ───
+async function applyChanges(arrayBuffer, changes) {
+  const zip = await JSZip.loadAsync(arrayBuffer);
+  const xmlStr = await zip.file('word/document.xml').async('text');
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlStr, 'application/xml');
+  const body = doc.getElementsByTagNameNS(W, 'body')[0];
+  const paras = body.getElementsByTagNameNS(W, 'p');
+
+  for (const change of changes) {
+    if (change.action === 'keep') continue;
+    const p = paras[change.para_idx];
+    if (!p) continue;
+
+    // Collect all w:r runs that are NOT inside w:del
+    const allRuns = p.getElementsByTagNameNS(W, 'r');
+    const liveRuns = [];
+    for (let r of allRuns) {
+      let ancestor = r.parentNode;
+      let inDel = false;
+      while (ancestor && ancestor !== p) {
+        if (ancestor.localName === 'del') { inDel = true; break; }
+        ancestor = ancestor.parentNode;
+      }
+      if (!inDel) liveRuns.push(r);
+    }
+
+    if (liveRuns.length === 0) continue;
+
+    // Find the first run that has a w:t child and put all new text there
+    // Then blank out w:t in all other runs
+    let placed = false;
+    for (let ri = 0; ri < liveRuns.length; ri++) {
+      const run = liveRuns[ri];
+      const tNodes = run.getElementsByTagNameNS(W, 't');
+      if (tNodes.length > 0) {
+        if (!placed) {
+          tNodes[0].textContent = change.new_text;
+          // Preserve leading/trailing spaces
+          if (change.new_text.startsWith(' ') || change.new_text.endsWith(' ')) {
+            tNodes[0].setAttribute('xml:space', 'preserve');
+          }
+          // Clear extra t nodes in same run
+          for (let ti = 1; ti < tNodes.length; ti++) tNodes[ti].textContent = '';
+          placed = true;
+        } else {
+          // Clear all text in subsequent runs
+          for (let ti = 0; ti < tNodes.length; ti++) tNodes[ti].textContent = '';
+        }
+      }
+    }
+  }
+
+  // Serialize back
+  const serializer = new XMLSerializer();
+  const newXml = serializer.serializeToString(doc);
+  zip.file('word/document.xml', newXml);
+  return await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+
+// ─── Main tailor flow ───
+function checkReady() {
+  const ready = baseDocxBytes && document.getElementById('jdInput').value.trim();
+  document.getElementById('tailorBtn').disabled = !ready;
+}
+document.getElementById('jdInput').addEventListener('input', checkReady);
+
+async function tailor() {
+  const jd = document.getElementById('jdInput').value.trim();
+  if (!baseDocxBytes || !jd) return;
+
+  document.getElementById('tailorBtn').disabled = true;
+  document.getElementById('dlBtn').disabled = true;
+  document.getElementById('dlBtn').style.opacity = '.4';
+  document.getElementById('dlBtn').style.cursor = 'not-allowed';
+  document.getElementById('s3').classList.remove('on');
+  lastChanges = null;
+
+  const outputArea = document.getElementById('outputArea');
+  outputArea.innerHTML = `<div class="thinking"><div class="dots"><span></span><span></span><span></span></div><span class="think-lbl">Reading resume structure…</span></div>`;
+  setStatus('spin', 'Analyzing resume and job description…');
+
+  // Build a readable representation of the resume for Claude
+  const resumeText = parsedParas
+    .filter(p => !p.isEmpty)
+    .map(p => `[PARA ${p.idx}][STYLE:${p.style}] ${p.text}`)
+    .join('\n');
+
+  const systemPrompt = `You are an expert resume coach and ATS optimization specialist.
+
+You receive a resume represented as numbered paragraphs with their Word style names, and a job description.
+Your task: decide which paragraphs to rewrite or tweak to best match the role, then provide the new text.
+
+Return ONLY a raw JSON object — no markdown, no code fences. Structure:
+
+{
+  "job_title": "Role you're tailoring for",
+  "changes": [
+    {
+      "para_idx": 0,
+      "section": "Human-readable section name (e.g. Summary, Skills, Experience)",
+      "action": "rewrite" | "tweak" | "keep",
+      "reasoning": "1-2 sentence explanation",
+      "original_text": "The original paragraph text",
+      "new_text": "The replacement text (identical to original_text if action is keep)"
+    }
+  ],
+  "keywords_added": ["keyword1", "keyword2"],
+  "overall_tip": "One short actionable tip"
+}
+
+Critical rules:
+- Include EVERY non-empty paragraph in the changes array (even ones you keep)
+- Preserve bullet point prefixes (• - *) if the original has them
+- Never fabricate experience, credentials, or companies
+- Only rephrase/reframe what already exists using job description keywords
+- Keep text length similar to original — don't bloat paragraphs
+- For heading paragraphs (Heading1/Heading2 styles), action should almost always be "keep"
+- Focus rewrites on: Summary, Skills, bullet points under experience roles
+- new_text must be plain text only — no XML, no markdown`;
+
+  const userMsg = `RESUME PARAGRAPHS:\n${resumeText}\n\nJOB DESCRIPTION:\n${jd}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMsg }]
+      })
+    });
+
+    if (!resp.ok) {
+      const e = await resp.json();
+      throw new Error(e.error?.message || `API ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const raw = data.content.map(b => b.text || '').join('').trim()
+      .replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/,'');
+    const result = JSON.parse(raw);
+
+    lastChanges = result;
+    renderResult(result);
+    setStatus('ok', `Done · ${result.changes.filter(c=>c.action!=='keep').length} paragraphs updated`);
+    document.getElementById('s3').classList.add('on');
+    document.getElementById('dlBtn').disabled = false;
+    document.getElementById('dlBtn').style.opacity = '1';
+    document.getElementById('dlBtn').style.cursor = 'pointer';
+
+  } catch(err) {
+    outputArea.innerHTML = `<div class="card" style="border-color:var(--danger)">
+      <div class="card-hd"><span class="card-section" style="color:var(--danger)">Error</span></div>
+      <div class="card-body"><div class="new-txt">${err.message}</div></div>
+    </div>`;
+    setStatus('err', 'Error — check output');
+  }
+
+  document.getElementById('tailorBtn').disabled = false;
+}
+
+function renderResult(result) {
+  const area = document.getElementById('outputArea');
+  area.innerHTML = '';
+
+  // Summary bar
+  const rw = result.changes.filter(c=>c.action==='rewrite').length;
+  const tw = result.changes.filter(c=>c.action==='tweak').length;
+  const kp = result.changes.filter(c=>c.action==='keep').length;
+  area.innerHTML = `
+    <div style="margin-bottom:14px;padding:10px 14px;background:rgba(200,240,74,.05);border:1px solid rgba(200,240,74,.12);border-radius:8px">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Tailoring for · <span style="color:var(--accent)">${result.job_title}</span></div>
+      <div style="display:flex;gap:20px">
+        <div><div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent)">${rw}</div><div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px">Rewritten</div></div>
+        <div><div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--warn)">${tw}</div><div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px">Tweaked</div></div>
+        <div><div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent2)">${kp}</div><div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px">Kept</div></div>
+      </div>
+    </div>`;
+
+  // Group by section
+  const sections = {};
+  const sectionOrder = [];
+  result.changes.forEach(c => {
+    if (!sections[c.section]) { sections[c.section] = []; sectionOrder.push(c.section); }
+    sections[c.section].push(c);
+  });
+
+  sectionOrder.forEach(secName => {
+    const items = sections[secName];
+    const hasChange = items.some(i=>i.action!=='keep');
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const actionCounts = {
+      rewrite: items.filter(i=>i.action==='rewrite').length,
+      tweak: items.filter(i=>i.action==='tweak').length,
+    };
+    let badgeCls = 'b-kp', badgeTxt = '✓ KEEP';
+    if (actionCounts.rewrite > 0) { badgeCls = 'b-rw'; badgeTxt = `↻ ${actionCounts.rewrite} REWRITTEN`; }
+    else if (actionCounts.tweak > 0) { badgeCls = 'b-tw'; badgeTxt = `~ ${actionCounts.tweak} TWEAKED`; }
+
+    let body = '';
+    items.forEach((c, ci) => {
+      if (c.action === 'keep') return;
+      if (ci > 0 && body) body += '<hr class="rule">';
+      body += `
+        <div class="lbl">Para #${c.para_idx} · Original</div>
+        <div class="${c.action==='rewrite'?'orig':'tw-orig'}">${esc(c.original_text)}</div>
+        <div style="margin:8px 0 4px"><div class="lbl" style="color:${c.action==='rewrite'?'var(--accent)':'var(--warn)'}">Tailored</div></div>
+        <div class="new-txt">${esc(c.new_text)}</div>
+        <div style="margin-top:8px" class="reason">💬 ${esc(c.reasoning)}</div>`;
+    });
+
+    if (!body && !hasChange) {
+      body = `<div class="reason" style="color:#3a3a3a">No changes needed — already well-matched to this role.</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="card-hd">
+        <span class="card-section">${esc(secName)}</span>
+        <span class="badge ${badgeCls}">${badgeTxt}</span>
+      </div>
+      ${body ? `<div class="card-body">${body}</div>` : ''}`;
+    area.appendChild(card);
+  });
+
+  // Keywords
+  if (result.keywords_added?.length) {
+    const kw = document.createElement('div');
+    kw.className = 'card';
+    kw.innerHTML = `<div class="card-hd"><span class="card-section">Keywords Woven In</span></div>
+      <div class="card-body"><div style="display:flex;flex-wrap:wrap;gap:6px">${result.keywords_added.map(k=>`<span style="background:rgba(74,240,184,.08);border:1px solid rgba(74,240,184,.2);color:var(--accent2);border-radius:4px;padding:3px 9px;font-family:'DM Mono',monospace;font-size:11px">${esc(k)}</span>`).join('')}</div></div>`;
+    area.appendChild(kw);
+  }
+
+  // Tip
+  if (result.overall_tip) {
+    const tip = document.createElement('div');
+    tip.className = 'card';
+    tip.style.borderColor = 'rgba(74,240,184,.2)';
+    tip.innerHTML = `<div class="card-hd" style="background:rgba(74,240,184,.04)"><span class="card-section" style="color:var(--accent2)">Application Tip</span></div>
+      <div class="card-body"><div class="new-txt">${esc(result.overall_tip)}</div></div>`;
+    area.appendChild(tip);
+  }
+}
+
+// ─── Download tailored .docx ───
+async function downloadDocx() {
+  if (!lastChanges || !baseDocxBytes) return;
+  document.getElementById('dlBtn').disabled = true;
+  setStatus('spin', 'Generating tailored .docx…');
+  try {
+    const blob = await applyChanges(baseDocxBytes, lastChanges.changes);
+    const outName = baseFileName.replace(/\.docx$/i, `_${lastChanges.job_title.replace(/[^a-z0-9]/gi,'_').toLowerCase()}.docx`);
+    saveAs(blob, outName);
+    setStatus('ok', `Downloaded: ${outName}`);
+  } catch(err) {
+    setStatus('err', 'Download failed: ' + err.message);
+  }
+  document.getElementById('dlBtn').disabled = false;
+}
+
+// ─── Helpers ───
+function setStatus(state, txt) {
+  const d = document.getElementById('dot');
+  d.className = 'dot' + (state==='spin'?' spin':state==='ok'?' ok':state==='err'?' err':'');
+  document.getElementById('statusTxt').textContent = txt;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
