@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xdg-settings get *)",
+      "Bash(npx tsc *)",
+      "Bash(curl -sf http://localhost:3737)",
+      "Bash(npx next *)",
+      "Bash(echo \"PID=$!\")"
+    ]
+  }
+}
